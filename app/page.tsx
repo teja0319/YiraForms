@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { main as ensureIndexes } from "@/scripts/db/create-indexes" // Import the main function
 
 export default function Home() {
   const [token, setToken] = useState("")
@@ -110,10 +109,15 @@ export default function Home() {
 
   async function runEnsureIndexes() {
     try {
-      await ensureIndexes() // Call the main function
+      const res = await fetch("/api/admin/ensure-indexes", { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(`Failed: ${JSON.stringify(data, null, 2)}`)
+        return
+      }
       alert("Indexes ensured successfully!")
     } catch (error) {
-      console.error("Error ensuring indexes:", error)
+      console.error("[v0] Error ensuring indexes:", error)
       alert("Failed to ensure indexes. Check the console for details.")
     }
   }
@@ -124,10 +128,7 @@ export default function Home() {
 
       <section className="mb-6 border rounded-lg p-4">
         <h2 className="text-lg font-medium mb-2">Database</h2>
-        <button
-          className="px-3 py-2 rounded bg-primary text-primary-foreground"
-          onClick={runEnsureIndexes}
-        >
+        <button className="px-3 py-2 rounded bg-primary text-primary-foreground" onClick={runEnsureIndexes}>
           Ensure Indexes
         </button>
       </section>
