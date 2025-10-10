@@ -1,5 +1,4 @@
-import type mongoose from "mongoose"
-import { Schema, model, models } from "mongoose"
+import mongoose, { Schema, model, models } from "mongoose"
 
 export interface ISubmission {
   _id: mongoose.Types.ObjectId
@@ -26,10 +25,13 @@ const SubmissionSchema = new Schema<ISubmission>(
     ipAddress: { type: String },
     metadata: { type: Schema.Types.Mixed },
   },
-  { timestamps: true },
+  { timestamps: true }
 )
 
 // Optimize retrieval by keys
 SubmissionSchema.index({ formId: 1, primaryKey: 1, secondaryKey: 1 }, { name: "form_primary_secondary" })
 
-export const Submission = models.Submission || model<ISubmission>("Submission", SubmissionSchema)
+// ✅ Safer export that avoids runtime undefined issues
+export const Submission =
+  (models.Submission as mongoose.Model<ISubmission>) ||
+  model<ISubmission>("Submission", SubmissionSchema)

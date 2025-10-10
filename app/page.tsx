@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { main as ensureIndexes } from "@/scripts/db/create-indexes" // Import the main function
 
 export default function Home() {
   const [token, setToken] = useState("")
@@ -107,9 +108,29 @@ export default function Home() {
     alert(JSON.stringify(data, null, 2))
   }
 
+  async function runEnsureIndexes() {
+    try {
+      await ensureIndexes() // Call the main function
+      alert("Indexes ensured successfully!")
+    } catch (error) {
+      console.error("Error ensuring indexes:", error)
+      alert("Failed to ensure indexes. Check the console for details.")
+    }
+  }
+
   return (
     <main className="max-w-3xl mx-auto p-6">
       <h1 className="text-2xl font-semibold mb-4 text-balance">Dynamic Forms API Demo</h1>
+
+      <section className="mb-6 border rounded-lg p-4">
+        <h2 className="text-lg font-medium mb-2">Database</h2>
+        <button
+          className="px-3 py-2 rounded bg-primary text-primary-foreground"
+          onClick={runEnsureIndexes}
+        >
+          Ensure Indexes
+        </button>
+      </section>
 
       <section className="mb-6 border rounded-lg p-4">
         <h2 className="text-lg font-medium mb-2">Auth</h2>

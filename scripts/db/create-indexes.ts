@@ -3,7 +3,7 @@ import { Submission } from "@/models/submission"
 import { Form } from "@/models/form"
 import { Org } from "@/models/org"
 
-async function main() {
+export async function main() {
   await connectMongo()
   console.log("[v0] Ensuring indexes...")
   await Promise.all([Submission.syncIndexes(), Form.syncIndexes(), Org.syncIndexes()])
