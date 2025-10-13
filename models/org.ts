@@ -6,6 +6,7 @@ export interface IOrg {
   name: string
   slug: string
   contactEmail?: string
+  address?: string
   ownerUserId: mongoose.Types.ObjectId
   createdAt: Date
   updatedAt: Date
@@ -16,6 +17,7 @@ const OrgSchema = new Schema<IOrg>(
     name: { type: String, required: true },
     slug: { type: String, required: true, unique: true, index: true },
     contactEmail: { type: String },
+    address: { type: String },
     ownerUserId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
   },
   { timestamps: true },

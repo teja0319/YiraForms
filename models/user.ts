@@ -7,12 +7,14 @@ export interface IUser {
   passwordHash: string
   createdAt: Date
   updatedAt: Date
+  orgId?: mongoose.Types.ObjectId
 }
 
 const UserSchema = new Schema<IUser>(
   {
     email: { type: String, required: true, unique: true, index: true },
     passwordHash: { type: String, required: true },
+    orgId: { type: Schema.Types.ObjectId, ref: "Org", index: true },
   },
   { timestamps: true },
 )
