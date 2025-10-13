@@ -7,6 +7,7 @@ import { signAuthToken, makeHttpError } from "@/lib/auth"
 
 export async function POST(req: NextRequest) {
   try {
+    debugger
     await connectMongo()
     const body = await req.json()
     const parsed = registerSchema.safeParse(body)
