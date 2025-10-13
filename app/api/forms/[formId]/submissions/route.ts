@@ -40,15 +40,48 @@ export async function POST(req: NextRequest, { params }: { params: { formId: str
     const errors: Array<{ field: string; reason: string }> = []
     for (const field of form.fields) {
       const value = parsed.data.data[field.name]
-      if (field.required && (value === undefined || value === null || value === "")) {
-        errors.push({ field: field.name, reason: "required" })
-        continue
+      // Required checks (special-case checkbox must be true)
+      if (field.required) {
+        if (field.type === "checkbox") {
+          if (value !== true) {
+            errors.push({ field: field.name, reason: "required" })
+            continue
+          }
+        } else if (value === undefined || value === null || value === "") {
+          errors.push({ field: field.name, reason: "required" })
+          continue
+        }
       }
-      if (value === undefined || value === null) continue
+      if (value === undefined || value === null || value === "") continue
 
+      // Type checks
       if (field.type === "number" && typeof value !== "number") {
         errors.push({ field: field.name, reason: "type:number" })
       }
+      if ((field.type === "text" || field.type === "textarea" || field.type === "email") && typeof value !== "string") {
+        errors.push({ field: field.name, reason: "type:string" })
+      }
+      if (field.type === "checkbox" && typeof value !== "boolean") {
+        errors.push({ field: field.name, reason: "type:boolean" })
+      }
+      if (field.type === "date") {
+        const d = new Date(value)
+        if (typeof value !== "string" || isNaN(d.getTime())) {
+          errors.push({ field: field.name, reason: "type:date" })
+        }
+      }
+      if (field.type === "select" || field.type === "radio") {
+        if (typeof value !== "string") {
+          errors.push({ field: field.name, reason: "type:string" })
+        } else if (Array.isArray(field.options) && field.options.length > 0) {
+          const allowed = field.options.map((o: any) => (typeof o === "string" ? o : o.value))
+          if (!allowed.includes(value)) {
+            errors.push({ field: field.name, reason: "invalid_option" })
+          }
+        }
+      }
+
+      // String validations
       if (field.validations?.minLength && typeof value === "string" && value.length < field.validations.minLength) {
         errors.push({ field: field.name, reason: "minLength" })
       }
@@ -59,6 +92,8 @@ export async function POST(req: NextRequest, { params }: { params: { formId: str
         const re = new RegExp(field.validations.pattern)
         if (!re.test(value)) errors.push({ field: field.name, reason: "pattern" })
       }
+
+      // Numeric validations
       if (field.validations?.min !== undefined && typeof value === "number" && value < field.validations.min) {
         errors.push({ field: field.name, reason: "min" })
       }

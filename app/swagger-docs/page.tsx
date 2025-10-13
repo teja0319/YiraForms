@@ -6,5 +6,5 @@ export const metadata = {
 }
 
 export default function Page() {
-  return <SwaggerUIPage url="/api/swagger" />
+  return <SwaggerUIPage url="/api/openapi" />
 }
