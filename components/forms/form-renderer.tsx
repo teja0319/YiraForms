@@ -5,13 +5,19 @@ import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Checkbox } from "@/components/ui/checkbox"
 
+type FieldOption = { value: string; label: string }
 type Field = {
   id: string
   label: string
-  type: "text" | "email" | "number" | "select"
+  name?: string // backend uses 'name' as submission data key
+  type: "text" | "email" | "number" | "select" | "textarea" | "date" | "checkbox" | "radio"
   required?: boolean
-  options?: string[]
+  options?: Array<string | FieldOption>
 }
 
 export default function FormRenderer({
@@ -22,26 +28,63 @@ export default function FormRenderer({
   onSubmitted?: (res: any) => void
 }) {
   const [values, setValues] = useState<Record<string, any>>({})
+  const [primaryKey, setPrimaryKey] = useState("")
+  const [secondaryKey, setSecondaryKey] = useState<string>("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const formId = form._id
 
-  const onChangeField = (id: string, val: any) => setValues((v) => ({ ...v, [id]: val }))
+  const normalizeKey = (f: Field) => f.name || f.id
+  const normalizeOptions = (f: Field): FieldOption[] =>
+    (f.options || []).map((o) => (typeof o === "string" ? { value: o, label: o } : o))
+
+  const onChangeField = (key: string, val: any) => setValues((v) => ({ ...v, [key]: val }))
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    // Basic client-side required check to avoid obvious 400s
+    for (const f of form.fields) {
+      const key = normalizeKey(f)
+      const v = values[key]
+      if (f.required) {
+        if (f.type === "checkbox") {
+          if (v !== true) {
+            setError(`"${f.label}" must be checked`)
+            return
+          }
+        } else if (v === undefined || v === null || v === "") {
+          setError(`"${f.label}" is required`)
+          return
+        }
+      }
+    }
+    if (!primaryKey) {
+      setError("Primary Key is required")
+      return
+    }
+
     setLoading(true)
     try {
       const res = await fetch(`/api/forms/${formId}/submissions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ values }),
+        body: JSON.stringify({
+          primaryKey,
+          secondaryKey: secondaryKey || null,
+          data: values,
+        }),
       })
-      if (!res.ok) throw new Error("Failed to submit")
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error(j?.error?.message || "Failed to submit")
+      }
       const data = await res.json()
       onSubmitted?.(data)
       setValues({})
+      setPrimaryKey("")
+      setSecondaryKey("")
     } catch (e: any) {
       setError(e?.message || "Submission failed")
     } finally {
@@ -53,55 +96,152 @@ export default function FormRenderer({
     <form onSubmit={onSubmit} className="grid gap-4">
       {form.description && <p className="text-muted-foreground">{form.description}</p>}
 
-      {form.fields.map((f) => (
-        <label key={f.id} className="grid gap-2">
-          <span>
-            {f.label}
-            {f.required ? " *" : ""}
-          </span>
+      {/* Primary/Secondary Keys */}
+      <div className="grid gap-2">
+        <Label htmlFor="primaryKey">
+          Primary Key <span aria-hidden="true">*</span>
+        </Label>
+        <Input
+          id="primaryKey"
+          name="primaryKey"
+          value={primaryKey}
+          onChange={(e) => setPrimaryKey(e.target.value)}
+          required
+          placeholder="e.g. customer-id or email"
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="secondaryKey">Secondary Key (optional)</Label>
+        <Input
+          id="secondaryKey"
+          name="secondaryKey"
+          value={secondaryKey}
+          onChange={(e) => setSecondaryKey(e.target.value)}
+          placeholder="optional"
+        />
+      </div>
 
-          {f.type === "text" && (
-            <Input
-              value={values[f.id] ?? ""}
-              onChange={(e) => onChangeField(f.id, e.target.value)}
-              required={!!f.required}
-            />
-          )}
-          {f.type === "email" && (
-            <Input
-              type="email"
-              value={values[f.id] ?? ""}
-              onChange={(e) => onChangeField(f.id, e.target.value)}
-              required={!!f.required}
-            />
-          )}
-          {f.type === "number" && (
-            <Input
-              type="number"
-              value={values[f.id] ?? ""}
-              onChange={(e) => onChangeField(f.id, e.target.value)}
-              required={!!f.required}
-            />
-          )}
-          {f.type === "select" && (
-            <select
-              className="h-9 rounded-md border bg-background px-2"
-              value={values[f.id] ?? ""}
-              onChange={(e) => onChangeField(f.id, e.target.value)}
-              required={!!f.required}
-            >
-              <option value="" disabled>
-                Select an option
-              </option>
-              {(f.options || []).map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
+      {/* Dynamic Fields */}
+      {form.fields.map((f) => {
+        const key = normalizeKey(f)
+        const opts = normalizeOptions(f)
+        const label = f.label || key
+
+        return (
+          <div key={key} className="grid gap-2">
+            <Label htmlFor={key}>
+              {label}
+              {f.required ? " *" : ""}
+            </Label>
+
+            {f.type === "text" && (
+              <Input
+                id={key}
+                name={key}
+                value={values[key] ?? ""}
+                onChange={(e) => onChangeField(key, e.target.value)}
+                required={!!f.required}
+              />
+            )}
+
+            {f.type === "email" && (
+              <Input
+                id={key}
+                name={key}
+                type="email"
+                value={values[key] ?? ""}
+                onChange={(e) => onChangeField(key, e.target.value)}
+                required={!!f.required}
+              />
+            )}
+
+            {f.type === "number" && (
+              <Input
+                id={key}
+                name={key}
+                type="number"
+                value={values[key] ?? ""}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  onChangeField(key, raw === "" ? "" : Number(raw))
+                }}
+                required={!!f.required}
+              />
+            )}
+
+            {f.type === "textarea" && (
+              <Textarea
+                id={key}
+                name={key}
+                value={values[key] ?? ""}
+                onChange={(e) => onChangeField(key, e.target.value)}
+                required={!!f.required}
+              />
+            )}
+
+            {f.type === "date" && (
+              <Input
+                id={key}
+                name={key}
+                type="date"
+                value={values[key] ?? ""}
+                onChange={(e) => onChangeField(key, e.target.value)}
+                required={!!f.required}
+              />
+            )}
+
+            {f.type === "select" && (
+              <select
+                id={key}
+                name={key}
+                className="h-9 rounded-md border bg-background px-2"
+                value={values[key] ?? ""}
+                onChange={(e) => onChangeField(key, e.target.value)}
+                required={!!f.required}
+              >
+                <option value="" disabled>
+                  Select an option
                 </option>
-              ))}
-            </select>
-          )}
-        </label>
-      ))}
+                {opts.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {f.type === "radio" && (
+              <RadioGroup
+                id={key}
+                name={key}
+                value={values[key] ?? ""}
+                onValueChange={(val) => onChangeField(key, val)}
+                required={!!f.required}
+              >
+                {opts.map((opt) => (
+                  <div key={opt.value} className="flex items-center gap-2">
+                    <RadioGroupItem id={`${key}-${opt.value}`} value={opt.value} />
+                    <Label htmlFor={`${key}-${opt.value}`}>{opt.label}</Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            )}
+
+            {f.type === "checkbox" && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id={key}
+                  name={key}
+                  checked={values[key] ?? false}
+                  onCheckedChange={(checked) => onChangeField(key, !!checked)}
+                  required={!!f.required}
+                />
+                <Label htmlFor={key}>{label}</Label>
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       <Button type="submit" disabled={loading}>

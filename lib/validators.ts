@@ -3,7 +3,6 @@ import { z } from "zod"
 export const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6).max(128),
-  orgId: z.string().optional(),
 })
 
 export const loginSchema = registerSchema
@@ -55,11 +54,4 @@ export const submissionSchema = z.object({
   primaryKey: z.string().min(1),
   secondaryKey: z.string().min(1).optional().nullable(),
   data: z.record(z.any()),
-})
-
-export const orgAccountCreateSchema = z.object({
-  name: z.string().min(1, "Organization name is required"),
-  email: z.string().email("Valid organization email is required"),
-  password: z.string().min(6).max(128),
-  address: z.string().min(1, "Address is required"),
 })

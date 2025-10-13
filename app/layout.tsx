@@ -5,6 +5,8 @@ import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import "./globals.css"
+import { ThemeProvider } from "@/components/theme-provider"
+import AppNavbar from "@/components/app-navbar"
 
 export const metadata: Metadata = {
   title: "v0 App",
@@ -18,10 +20,15 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-        <Suspense fallback={<div className="text-sm text-foreground/70">Loading...</div>}>{children}</Suspense>
-        <Analytics />
+    <html lang="en" suppressHydrationWarning>
+      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <AppNavbar />
+          <Suspense fallback={<div className="text-sm text-foreground/70">Loading...</div>}>
+            <main className="min-h-[calc(100dvh-3.5rem)]">{children}</main>
+          </Suspense>
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   )

@@ -7,10 +7,13 @@ export async function GET(req: NextRequest) {
   const spec = createSwaggerSpec({
     apiFolder: "app/api", // point to your API folder for future JSDoc scanning
     definition: {
-      title: "Dynamic Forms API",
-      version: "1.0.0",
-      description:
-        "API for account/auth, organizations, dynamic form definitions, public submissions, and protected submissions management.",
+      openapi: "3.1.0",
+      info: {
+        title: "Dynamic Forms API",
+        version: "1.0.0",
+        description:
+          "API for account/auth, organizations, dynamic form definitions, public submissions, and protected submissions management.",
+      },
       servers: [{ url: origin }],
       components: {
         securitySchemes: {
@@ -64,10 +67,7 @@ export async function GET(req: NextRequest) {
             properties: {
               _id: { type: "string" },
               name: { type: "string" },
-              slug: { type: "string" },
-              contactEmail: { type: "string", format: "email" },
-              address: { type: "string" },
-              ownerUserId: { type: "string" },
+              ownerId: { type: "string" },
               createdAt: { type: "string", format: "date-time" },
               updatedAt: { type: "string", format: "date-time" },
             },
@@ -159,16 +159,6 @@ export async function GET(req: NextRequest) {
               secondary: { type: "string" },
               page: { type: "integer", minimum: 1, default: 1 },
               limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
-            },
-          },
-          OrgAccountCreateRequest: {
-            type: "object",
-            required: ["name", "email", "password", "address"],
-            properties: {
-              name: { type: "string" },
-              email: { type: "string", format: "email" },
-              password: { type: "string", minLength: 6 },
-              address: { type: "string" },
             },
           },
         },
@@ -455,43 +445,6 @@ export async function GET(req: NextRequest) {
               { name: "submissionId", in: "path", required: true, schema: { type: "string" } },
             ],
             responses: { "204": { description: "Deleted" } },
-          },
-        },
-        "/api/orgs/register": {
-          post: {
-            tags: ["orgs"],
-            summary: "Create organization and owner account",
-            description: "Creates an organization and an owner user in one call. Returns JWT token.",
-            security: [], // public
-            requestBody: {
-              required: true,
-              content: { "application/json": { schema: { $ref: "#/components/schemas/OrgAccountCreateRequest" } } },
-            },
-            responses: {
-              "201": {
-                description: "Created org & account",
-                content: {
-                  "application/json": {
-                    schema: {
-                      type: "object",
-                      properties: {
-                        token: { type: "string" },
-                        org: { $ref: "#/components/schemas/Org" },
-                        user: {
-                          type: "object",
-                          properties: {
-                            _id: { type: "string" },
-                            email: { type: "string" },
-                            orgId: { type: "string" },
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-              "400": { description: "Validation error" },
-            },
           },
         },
       },

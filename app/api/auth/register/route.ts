@@ -13,23 +13,16 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       throw makeHttpError("VALIDATION_ERROR", "Invalid input", 400, parsed.error.flatten())
     }
-    const { email, password, orgId } = parsed.data
+    const { email, password } = parsed.data
 
     const existing = await User.findOne({ email })
     if (existing) throw makeHttpError("VALIDATION_ERROR", "Email already registered", 400)
 
     const passwordHash = await hash(password, 10)
-    const user = await User.create({ email, passwordHash, ...(orgId ? { orgId } : {}) })
+    const user = await User.create({ email, passwordHash })
 
-    const token = await signAuthToken({
-      userId: String(user._id),
-      email: user.email,
-      orgId: user.orgId ? String(user.orgId) : undefined,
-    })
-    return NextResponse.json(
-      { ok: true, token, user: { _id: String(user._id), email: user.email, orgId: user.orgId } },
-      { status: 201 },
-    )
+    const token = await signAuthToken({ userId: String(user._id), email: user.email })
+    return NextResponse.json({ ok: true, token }, { status: 201 })
   } catch (e: any) {
     const status = e?.status || 500
     return NextResponse.json(

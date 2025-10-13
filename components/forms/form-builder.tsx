@@ -10,24 +10,35 @@ import { apiFetch } from "@/lib/client-fetch"
 type Field = {
   id: string
   label: string
-  type: "text" | "email" | "number" | "select"
+  name: string
+  type: "text" | "textarea" | "number" | "date" | "select" | "checkbox" | "radio" | "file"
   required?: boolean
-  options?: string[] // for select
+  options?: string[] // for select/radio, we'll map to { value, label } on save
 }
 
 export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCreated?: (form: any) => void }) {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [fields, setFields] = useState<Field[]>([])
-  const [primaryKeyFieldId, setPrimaryKeyFieldId] = useState<string>("")
-  const [secondaryKeyFieldId, setSecondaryKeyFieldId] = useState<string>("")
+  const [formId, setFormId] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  function slugify(input: string) {
+    return input
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "")
+  }
+
   const addField = () => {
+    const nextIndex = fields.length + 1
+    const defaultLabel = `Field ${nextIndex}`
     const newField: Field = {
       id: crypto.randomUUID(),
-      label: `Field ${fields.length + 1}`,
+      label: defaultLabel,
+      name: slugify(defaultLabel),
       type: "text",
       required: false,
       options: [],
@@ -47,18 +58,33 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
     setSaving(true)
     setError(null)
     try {
-      const body = {
+      const payload = {
+        formId: formId, // required by backend
         title,
         description,
-        fields,
-        primaryKeyFieldId: primaryKeyFieldId || null,
-        secondaryKeyFieldId: secondaryKeyFieldId || null,
+        fields: fields.map((f, index) => ({
+          id: f.id,
+          label: f.label,
+          name: f.name, // required by backend
+          type: f.type,
+          required: !!f.required,
+          options: (f.options || []).map((opt) => ({ value: slugify(opt), label: opt })),
+          order: index,
+        })),
+        // optional settings with backend defaults preserved
+        settings: {
+          acceptAnonymousSubmissions: false,
+          allowSecondaryKey: true,
+        },
       }
       const res = await apiFetch(`/api/orgs/${orgId}/forms`, {
         method: "POST",
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload),
       })
-      if (!res.ok) throw new Error("Failed to create form")
+      if (!res.ok) {
+        const errTxt = await res.text().catch(() => "")
+        throw new Error(errTxt || "Failed to create form")
+      }
       const data = await res.json()
       onCreated?.(data)
     } catch (e: any) {
@@ -75,6 +101,10 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
           <CardTitle>Form details</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
+          <label className="grid gap-2">
+            <span>Form ID</span>
+            <Input value={formId} onChange={(e) => setFormId(slugify(e.target.value))} placeholder="happiness-index" />
+          </label>
           <label className="grid gap-2">
             <span>Title</span>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Customer Feedback" />
@@ -103,10 +133,27 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
           )}
           {fields.map((f, idx) => (
             <div key={f.id} className="grid gap-2 border rounded-md p-3">
-              <div className="grid md:grid-cols-3 gap-3">
+              <div className="grid md:grid-cols-4 gap-3">
                 <label className="grid gap-1">
                   <span>Label</span>
-                  <Input value={f.label} onChange={(e) => updateField(idx, { label: e.target.value })} />
+                  <Input
+                    value={f.label}
+                    onChange={(e) => {
+                      const label = e.target.value
+                      // if name was previously auto-generated and matches old slug, keep it synced
+                      const prevSlug = slugify(f.label)
+                      const isAuto = f.name === prevSlug || f.name === ""
+                      updateField(idx, { label, name: isAuto ? slugify(label) : f.name })
+                    }}
+                  />
+                </label>
+                <label className="grid gap-1">
+                  <span>Name</span>
+                  <Input
+                    value={f.name}
+                    onChange={(e) => updateField(idx, { name: slugify(e.target.value) })}
+                    placeholder="key-used-in-submissions"
+                  />
                 </label>
                 <label className="grid gap-1">
                   <span>Type</span>
@@ -116,9 +163,13 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
                     onChange={(e) => updateField(idx, { type: e.target.value as Field["type"] })}
                   >
                     <option value="text">Text</option>
-                    <option value="email">Email</option>
+                    <option value="textarea">Textarea</option>
                     <option value="number">Number</option>
+                    <option value="date">Date</option>
                     <option value="select">Select</option>
+                    <option value="checkbox">Checkbox</option>
+                    <option value="radio">Radio</option>
+                    <option value="file">File</option>
                   </select>
                 </label>
                 <label className="flex items-center gap-2">
@@ -131,7 +182,7 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
                 </label>
               </div>
 
-              {f.type === "select" && (
+              {(f.type === "select" || f.type === "radio") && (
                 <div className="grid gap-2">
                   <span className="text-sm text-muted-foreground">Options (comma separated)</span>
                   <Input
@@ -164,37 +215,11 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
         <CardHeader>
           <CardTitle>Keys</CardTitle>
         </CardHeader>
-        <CardContent className="grid md:grid-cols-2 gap-4">
-          <label className="grid gap-2">
-            <span>Primary Key Field</span>
-            <select
-              className="h-9 rounded-md border bg-background px-2"
-              value={primaryKeyFieldId}
-              onChange={(e) => setPrimaryKeyFieldId(e.target.value)}
-            >
-              <option value="">None</option>
-              {fields.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-2">
-            <span>Secondary Key Field (optional)</span>
-            <select
-              className="h-9 rounded-md border bg-background px-2"
-              value={secondaryKeyFieldId}
-              onChange={(e) => setSecondaryKeyFieldId(e.target.value)}
-            >
-              <option value="">None</option>
-              {fields.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-          </label>
+        <CardContent className="grid gap-2">
+          <p className="text-sm text-muted-foreground">
+            Primary/Secondary keys are provided by your third-party system when submitting data (as primaryKey and
+            secondaryKey in the submission request). They are not stored in the form definition.
+          </p>
         </CardContent>
       </Card>
 
