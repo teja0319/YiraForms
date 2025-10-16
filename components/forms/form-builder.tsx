@@ -13,7 +13,7 @@ type Field = {
   name: string
   type: "text" | "textarea" | "number" | "date" | "select" | "checkbox" | "radio" | "file"
   required?: boolean
-  options?: string[] // for select/radio, we'll map to { value, label } on save
+  options?: string[] 
 }
 
 export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCreated?: (form: any) => void }) {

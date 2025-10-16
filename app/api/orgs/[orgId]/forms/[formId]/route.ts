@@ -8,9 +8,9 @@ import { makeHttpError, requireAuth } from "@/lib/auth"
 export async function GET(_: NextRequest, { params }: { params: { orgId: string; formId: string } }) {
   try {
     await connectMongo()
-    const org = await Org.findById(params.orgId)
-    if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
-    const form = await Form.findOne({ orgId: org._id, formId: params.formId })
+    // const org = await Org.findById(params.orgId)
+    // if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
+    const form = await Form.findOne({ formId: params.formId })
     if (!form) throw makeHttpError("NOT_FOUND", "Form not found", 404)
     return NextResponse.json({ ok: true, form }, { status: 200 })
   } catch (e: any) {

@@ -14,6 +14,7 @@ function ipFrom(req: NextRequest) {
 export async function POST(req: NextRequest, { params }: { params: { formId: string } }) {
   try {
     await connectMongo()
+    debugger
     // best-effort rate limiter
     const ip = ipFrom(req)
     const rl = checkRateLimit(clientKey(ip, req.nextUrl.pathname), 30, 60_000)
@@ -26,21 +27,30 @@ export async function POST(req: NextRequest, { params }: { params: { formId: str
     if (!parsed.success) {
       throw makeHttpError("VALIDATION_ERROR", "Invalid input", 400, parsed.error.flatten())
     }
-    const form = await Form.findOne({ formId: params.formId })
+
+    const form = await Form.findOne({ _id: params.formId })
     if (!form) throw makeHttpError("NOT_FOUND", "Form not found", 404)
+
     const org = await Org.findById(form.orgId)
     if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
 
     // If not accepting anonymous, require auth
     if (!form.settings.acceptAnonymousSubmissions) {
-      await requireAuth(req)
+      // await requireAuth(req)
     }
 
-    // Basic data validation according to fields
+    // Field-level validation
     const errors: Array<{ field: string; reason: string }> = []
+
+    // Create a map of question–answer pairs (default empty string if no answer)
+    const questionAnswerPairs: Record<string, string | number | boolean> = {}
+
     for (const field of form.fields) {
       const value = parsed.data.data[field.name]
-      // Required checks (special-case checkbox must be true)
+      const answer = value ?? "" // store empty string if no answer
+      questionAnswerPairs[field.label || field.name] = answer
+
+      // Required checks
       if (field.required) {
         if (field.type === "checkbox") {
           if (value !== true) {
@@ -52,6 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: { formId: str
           continue
         }
       }
+
       if (value === undefined || value === null || value === "") continue
 
       // Type checks
@@ -101,16 +112,18 @@ export async function POST(req: NextRequest, { params }: { params: { formId: str
         errors.push({ field: field.name, reason: "max" })
       }
     }
+
     if (errors.length) {
       throw makeHttpError("VALIDATION_ERROR", "Field-level validation failed", 400, { errors })
     }
 
+    // Store question–answer structure instead of raw data
     const submission = await Submission.create({
       orgId: org._id,
       formId: form.formId,
       primaryKey: parsed.data.primaryKey,
       secondaryKey: parsed.data.secondaryKey ?? null,
-      data: parsed.data.data,
+      data: questionAnswerPairs,
       formVersion: 1,
       ipAddress: ip ?? undefined,
     })
