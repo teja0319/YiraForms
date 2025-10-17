@@ -14,7 +14,8 @@ type RegisterResult = { token: string; user?: AuthUser }
 const getToken = () => (typeof window !== "undefined" ? localStorage.getItem("auth_token") : null)
 
 export function useAuth() {
-  const [token, setToken] = useState<string | null>(getToken())
+  // This prevents localStorage access during server-side rendering
+  const [token, setToken] = useState<string | null>(null)
 
   useEffect(() => {
     setToken(getToken())
