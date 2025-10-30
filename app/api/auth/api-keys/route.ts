@@ -1,13 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { connectMongo } from "@/lib/mongo"
 import { ApiKey } from "@/models/api-key"
-import { requireAuth, makeHttpError } from "@/lib/auth"
+import { requireApiKey, makeHttpError } from "@/lib/auth"
 import { generateApiKey, hashApiKey } from "@/lib/api-key"
 
 export async function GET(req: NextRequest) {
   try {
     await connectMongo()
-    const auth = await requireAuth(req)
+    const auth = await requireApiKey(req)
 
     const apiKeys = await ApiKey.find({ userId: auth.userId }).select("-key")
     return NextResponse.json({ ok: true, apiKeys })
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await connectMongo()
-    const auth = await requireAuth(req)
+    const auth = await requireApiKey(req)
     const body = await req.json()
     const { name } = body
 

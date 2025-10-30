@@ -3,7 +3,7 @@ import { connectMongo } from "@/lib/mongo"
 import { Org } from "@/models/org"
 import { Form } from "@/models/form"
 import { formUpdateSchema } from "@/lib/validators"
-import { makeHttpError, requireAuth } from "@/lib/auth"
+import { makeHttpError, requireApiKey } from "@/lib/auth"
 
 export async function GET(_: NextRequest, { params }: { params: { orgId: string; formId: string } }) {
   try {
@@ -25,7 +25,7 @@ export async function GET(_: NextRequest, { params }: { params: { orgId: string;
 export async function PUT(req: NextRequest, { params }: { params: { orgId: string; formId: string } }) {
   try {
     await connectMongo()
-    const auth = await requireAuth(req)
+    const auth = await requireApiKey(req)
     const org = await Org.findById(params.orgId)
     if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
     if (String(org.ownerUserId) !== auth.userId) {
@@ -66,7 +66,7 @@ export async function PUT(req: NextRequest, { params }: { params: { orgId: strin
 export async function DELETE(req: NextRequest, { params }: { params: { orgId: string; formId: string } }) {
   try {
     await connectMongo()
-    const auth = await requireAuth(req)
+    const auth = await requireApiKey(req)
     const org = await Org.findById(params.orgId)
     if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
     if (String(org.ownerUserId) !== auth.userId) {

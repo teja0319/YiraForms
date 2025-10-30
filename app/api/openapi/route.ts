@@ -7,15 +7,16 @@ export async function GET() {
       title: "Dynamic Forms API",
       version: "1.0.0",
       description:
-        "OpenAPI description for the Next.js + MongoDB Dynamic Forms service. Use Bearer JWT for protected routes.",
+        "OpenAPI description for the Next.js + MongoDB Dynamic Forms service. Use API Key for protected routes.",
     },
     servers: [{ url: "/" }],
     components: {
       securitySchemes: {
-        bearerAuth: {
-          type: "http",
-          scheme: "bearer",
-          bearerFormat: "JWT",
+        apiKeyAuth: {
+          type: "apiKey",
+          in: "header",
+          name: "Authorization",
+          description: "API Key in format: Bearer sk_live_<key>",
         },
       },
       schemas: {
@@ -356,7 +357,7 @@ export async function GET() {
         },
         post: {
           summary: "Create organization",
-          security: [{ bearerAuth: [] }],
+          security: [{ apiKeyAuth: [] }],
           requestBody: {
             required: true,
             content: { "application/json": { schema: { $ref: "#/components/schemas/OrgCreateRequest" } } },
@@ -394,7 +395,7 @@ export async function GET() {
         },
         put: {
           summary: "Update organization",
-          security: [{ bearerAuth: [] }],
+          security: [{ apiKeyAuth: [] }],
           parameters: [{ name: "orgId", in: "path", required: true, schema: { type: "string" } }],
           requestBody: {
             required: true,
@@ -417,7 +418,7 @@ export async function GET() {
         },
         delete: {
           summary: "Delete organization",
-          security: [{ bearerAuth: [] }],
+          security: [{ apiKeyAuth: [] }],
           parameters: [{ name: "orgId", in: "path", required: true, schema: { type: "string" } }],
           responses: {
             200: { description: "OK" },
@@ -451,7 +452,7 @@ export async function GET() {
         },
         post: {
           summary: "Create a form",
-          security: [{ bearerAuth: [] }],
+          security: [{ apiKeyAuth: [] }],
           parameters: [{ name: "orgId", in: "path", required: true, schema: { type: "string" } }],
           requestBody: {
             required: true,
@@ -493,7 +494,7 @@ export async function GET() {
         },
         put: {
           summary: "Update a form",
-          security: [{ bearerAuth: [] }],
+          security: [{ apiKeyAuth: [] }],
           parameters: [
             { name: "orgId", in: "path", required: true, schema: { type: "string" } },
             { name: "formId", in: "path", required: true, schema: { type: "string" } },
@@ -519,7 +520,7 @@ export async function GET() {
         },
         delete: {
           summary: "Delete a form",
-          security: [{ bearerAuth: [] }],
+          security: [{ apiKeyAuth: [] }],
           parameters: [
             { name: "orgId", in: "path", required: true, schema: { type: "string" } },
             { name: "formId", in: "path", required: true, schema: { type: "string" } },
@@ -544,7 +545,7 @@ export async function GET() {
           summary: "List or fetch submissions (by keys)",
           description:
             "Requires primaryKey. If secondaryKey is provided, returns a single submission; otherwise returns a paginated list with optional date filtering.",
-          security: [{ bearerAuth: [] }],
+          security: [{ apiKeyAuth: [] }],
           parameters: [
             { name: "orgId", in: "path", required: true, schema: { type: "string" } },
             { name: "formId", in: "path", required: true, schema: { type: "string" } },
@@ -591,7 +592,7 @@ export async function GET() {
       "/api/orgs/{orgId}/forms/{formId}/submissions/{submissionId}": {
         get: {
           summary: "Get a submission by ID",
-          security: [{ bearerAuth: [] }],
+          security: [{ apiKeyAuth: [] }],
           parameters: [
             { name: "orgId", in: "path", required: true, schema: { type: "string" } },
             { name: "formId", in: "path", required: true, schema: { type: "string" } },
@@ -621,7 +622,8 @@ export async function GET() {
       // Submissions (public)
       "/api/forms/{formId}/submissions": {
         post: {
-          summary: "Submit data to a form (public endpoint or requires auth based on form settings)",
+          summary: "Submit data to a form (public endpoint)",
+          description: "No authentication required. Public form submission endpoint.",
           parameters: [{ name: "formId", in: "path", required: true, schema: { type: "string" } }],
           requestBody: {
             required: true,

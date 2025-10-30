@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { connectMongo } from "@/lib/mongo"
 import { Org } from "@/models/org"
 import { orgCreateSchema } from "@/lib/validators"
-import { makeHttpError, requireAuth } from "@/lib/auth"
+import { makeHttpError, requireApiKey } from "@/lib/auth"
 import { parsePagination } from "@/lib/pagination"
 
 export async function GET(req: NextRequest) {
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await connectMongo()
-    const auth = await requireAuth(req)
+    const auth = await requireApiKey(req)
     const body = await req.json()
     const parsed = orgCreateSchema.safeParse(body)
     if (!parsed.success) {

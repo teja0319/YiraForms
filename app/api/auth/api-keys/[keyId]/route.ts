@@ -1,13 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { connectMongo } from "@/lib/mongo"
 import { ApiKey } from "@/models/api-key"
-import { requireAuth, makeHttpError } from "@/lib/auth"
+import { requireApiKey, makeHttpError } from "@/lib/auth"
 import { Types } from "mongoose"
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ keyId: string }> }) {
   try {
     await connectMongo()
-    const auth = await requireAuth(req)
+    const auth = await requireApiKey(req)
     const { keyId } = await params
 
     if (!Types.ObjectId.isValid(keyId)) {
