@@ -13,7 +13,14 @@ type Field = {
   name: string
   type: "text" | "textarea" | "number" | "date" | "select" | "checkbox" | "radio" | "file"
   required?: boolean
-  options?: string[] 
+  options?: string[]
+  validations?: {
+    minLength?: number
+    maxLength?: number
+    pattern?: string
+    min?: number
+    max?: number
+  }
 }
 
 export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCreated?: (form: any) => void }) {
@@ -42,6 +49,7 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
       type: "text",
       required: false,
       options: [],
+      validations: {},
     }
     setFields((f) => [...f, newField])
   }
@@ -59,19 +67,19 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
     setError(null)
     try {
       const payload = {
-        formId: formId, // required by backend
+        formId: formId,
         title,
         description,
         fields: fields.map((f, index) => ({
           id: f.id,
           label: f.label,
-          name: f.name, // required by backend
+          name: f.name,
           type: f.type,
           required: !!f.required,
           options: (f.options || []).map((opt) => ({ value: slugify(opt), label: opt })),
+          validations: f.validations || {},
           order: index,
         })),
-        // optional settings with backend defaults preserved
         settings: {
           acceptAnonymousSubmissions: false,
           allowSecondaryKey: true,
@@ -132,15 +140,14 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
             <p className="text-sm text-muted-foreground">No fields yet. Add one to get started.</p>
           )}
           {fields.map((f, idx) => (
-            <div key={f.id} className="grid gap-2 border rounded-md p-3">
+            <div key={f.id} className="grid gap-3 border rounded-md p-4 bg-card">
               <div className="grid md:grid-cols-4 gap-3">
                 <label className="grid gap-1">
-                  <span>Label</span>
+                  <span className="text-sm font-medium">Label</span>
                   <Input
                     value={f.label}
                     onChange={(e) => {
                       const label = e.target.value
-                      // if name was previously auto-generated and matches old slug, keep it synced
                       const prevSlug = slugify(f.label)
                       const isAuto = f.name === prevSlug || f.name === ""
                       updateField(idx, { label, name: isAuto ? slugify(label) : f.name })
@@ -148,7 +155,7 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
                   />
                 </label>
                 <label className="grid gap-1">
-                  <span>Name</span>
+                  <span className="text-sm font-medium">Name</span>
                   <Input
                     value={f.name}
                     onChange={(e) => updateField(idx, { name: slugify(e.target.value) })}
@@ -156,9 +163,9 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
                   />
                 </label>
                 <label className="grid gap-1">
-                  <span>Type</span>
+                  <span className="text-sm font-medium">Type</span>
                   <select
-                    className="h-9 rounded-md border bg-background px-2"
+                    className="h-9 rounded-md border bg-background px-2 text-sm"
                     value={f.type}
                     onChange={(e) => updateField(idx, { type: e.target.value as Field["type"] })}
                   >
@@ -172,19 +179,20 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
                     <option value="file">File</option>
                   </select>
                 </label>
-                <label className="flex items-center gap-2">
+                <label className="flex items-center gap-2 pt-6">
                   <input
                     type="checkbox"
                     checked={!!f.required}
                     onChange={(e) => updateField(idx, { required: e.target.checked })}
+                    className="rounded"
                   />
-                  <span>Required</span>
+                  <span className="text-sm font-medium">Required</span>
                 </label>
               </div>
 
               {(f.type === "select" || f.type === "radio") && (
                 <div className="grid gap-2">
-                  <span className="text-sm text-muted-foreground">Options (comma separated)</span>
+                  <span className="text-sm font-medium text-muted-foreground">Options (comma separated)</span>
                   <Input
                     value={(f.options || []).join(", ")}
                     onChange={(e) =>
@@ -200,26 +208,110 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
                 </div>
               )}
 
-              <div className="flex items-center justify-between">
-                <Button variant="destructive" onClick={() => removeField(idx)}>
+              <div className="border-t pt-3 mt-2">
+                <p className="text-sm font-medium mb-3">Validation Rules (optional)</p>
+                <div className="grid md:grid-cols-2 gap-3">
+                  {(f.type === "text" || f.type === "textarea" || f.type === "email") && (
+                    <>
+                      <label className="grid gap-1">
+                        <span className="text-xs text-muted-foreground">Min Length</span>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={f.validations?.minLength ?? ""}
+                          onChange={(e) =>
+                            updateField(idx, {
+                              validations: {
+                                ...f.validations,
+                                minLength: e.target.value ? Number(e.target.value) : undefined,
+                              },
+                            })
+                          }
+                          placeholder="e.g. 3"
+                        />
+                      </label>
+                      <label className="grid gap-1">
+                        <span className="text-xs text-muted-foreground">Max Length</span>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={f.validations?.maxLength ?? ""}
+                          onChange={(e) =>
+                            updateField(idx, {
+                              validations: {
+                                ...f.validations,
+                                maxLength: e.target.value ? Number(e.target.value) : undefined,
+                              },
+                            })
+                          }
+                          placeholder="e.g. 100"
+                        />
+                      </label>
+                      <label className="grid gap-1 md:col-span-2">
+                        <span className="text-xs text-muted-foreground">Pattern (regex)</span>
+                        <Input
+                          value={f.validations?.pattern ?? ""}
+                          onChange={(e) =>
+                            updateField(idx, {
+                              validations: {
+                                ...f.validations,
+                                pattern: e.target.value || undefined,
+                              },
+                            })
+                          }
+                          placeholder="e.g. ^[A-Z0-9]+$"
+                        />
+                      </label>
+                    </>
+                  )}
+
+                  {f.type === "number" && (
+                    <>
+                      <label className="grid gap-1">
+                        <span className="text-xs text-muted-foreground">Min Value</span>
+                        <Input
+                          type="number"
+                          value={f.validations?.min ?? ""}
+                          onChange={(e) =>
+                            updateField(idx, {
+                              validations: {
+                                ...f.validations,
+                                min: e.target.value ? Number(e.target.value) : undefined,
+                              },
+                            })
+                          }
+                          placeholder="e.g. 0"
+                        />
+                      </label>
+                      <label className="grid gap-1">
+                        <span className="text-xs text-muted-foreground">Max Value</span>
+                        <Input
+                          type="number"
+                          value={f.validations?.max ?? ""}
+                          onChange={(e) =>
+                            updateField(idx, {
+                              validations: {
+                                ...f.validations,
+                                max: e.target.value ? Number(e.target.value) : undefined,
+                              },
+                            })
+                          }
+                          placeholder="e.g. 100"
+                        />
+                      </label>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <Button variant="destructive" size="sm" onClick={() => removeField(idx)}>
                   Remove
                 </Button>
                 <span className="text-xs text-muted-foreground">ID: {f.id}</span>
               </div>
             </div>
           ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Keys</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-2">
-          <p className="text-sm text-muted-foreground">
-            Primary/Secondary keys are provided by your third-party system when submitting data (as primaryKey and
-            secondaryKey in the submission request). They are not stored in the form definition.
-          </p>
         </CardContent>
       </Card>
 
