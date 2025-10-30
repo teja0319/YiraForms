@@ -14,6 +14,9 @@ export default function Home() {
   const [submissionPrimary, setSubmissionPrimary] = useState("user-123")
   const [submissionSecondary, setSubmissionSecondary] = useState("session-456")
 
+  const [apiKey, setApiKey] = useState("")
+  const [apiKeys, setApiKeys] = useState<any[]>([])
+
   async function register() {
     const res = await fetch("/api/auth/register", {
       method: "POST",
@@ -22,6 +25,7 @@ export default function Home() {
     })
     const data = await res.json()
     if (data.token) setToken(data.token)
+    if (data.apiKey) setApiKey(data.apiKey)
     alert(JSON.stringify(data, null, 2))
   }
 
@@ -122,6 +126,44 @@ export default function Home() {
     }
   }
 
+  async function fetchApiKeys() {
+    const res = await fetch("/api/auth/api-keys", {
+      headers: { authorization: `Bearer ${token}` },
+    })
+    const data = await res.json()
+    if (data.apiKeys) setApiKeys(data.apiKeys)
+    alert(JSON.stringify(data, null, 2))
+  }
+
+  async function createApiKey() {
+    const keyName = prompt("Enter API key name:")
+    if (!keyName) return
+
+    const res = await fetch("/api/auth/api-keys", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name: keyName }),
+    })
+    const data = await res.json()
+    alert(JSON.stringify(data, null, 2))
+    await fetchApiKeys()
+  }
+
+  async function deleteApiKey(keyId: string) {
+    if (!confirm("Are you sure you want to delete this API key?")) return
+
+    const res = await fetch(`/api/auth/api-keys/${keyId}`, {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${token}` },
+    })
+    const data = await res.json()
+    alert(JSON.stringify(data, null, 2))
+    await fetchApiKeys()
+  }
+
   return (
     <main className="max-w-3xl mx-auto p-6">
       <h1 className="text-2xl font-semibold mb-4 text-balance">Dynamic Forms API Demo</h1>
@@ -197,6 +239,45 @@ export default function Home() {
               Retrieve Submissions
             </button>
           </div>
+        </div>
+      </section>
+
+      <section className="mb-6 border rounded-lg p-4">
+        <h2 className="text-lg font-medium mb-2">API Keys</h2>
+        <div className="grid grid-cols-1 gap-3">
+          <p className="text-xs break-all">Current API Key: {apiKey}</p>
+          <div className="flex gap-2">
+            <button className="px-3 py-2 rounded bg-primary text-primary-foreground" onClick={fetchApiKeys}>
+              Fetch API Keys
+            </button>
+            <button className="px-3 py-2 rounded bg-primary text-primary-foreground" onClick={createApiKey}>
+              Create API Key
+            </button>
+          </div>
+          {apiKeys.length > 0 && (
+            <div className="text-xs">
+              <p className="font-medium mb-2">Your API Keys:</p>
+              {apiKeys.map((key: any) => (
+                <div key={key._id} className="flex justify-between items-center mb-2 p-2 bg-muted rounded">
+                  <div>
+                    <p className="font-medium">{key.name}</p>
+                    <p className="text-muted-foreground">Created: {new Date(key.createdAt).toLocaleDateString()}</p>
+                    {key.lastUsedAt && (
+                      <p className="text-muted-foreground">
+                        Last used: {new Date(key.lastUsedAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    className="px-2 py-1 rounded bg-destructive text-destructive-foreground text-xs"
+                    onClick={() => deleteApiKey(key._id)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </main>

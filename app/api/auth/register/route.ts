@@ -1,9 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { connectMongo } from "@/lib/mongo"
 import { User } from "@/models/user"
+import { ApiKey } from "@/models/api-key"
 import { registerSchema } from "@/lib/validators"
 import { hash } from "bcryptjs"
 import { signAuthToken, makeHttpError } from "@/lib/auth"
+import { generateApiKey, hashApiKey } from "@/lib/api-key"
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,8 +23,16 @@ export async function POST(req: NextRequest) {
     const passwordHash = await hash(password, 10)
     const user = await User.create({ email, passwordHash })
 
+    const apiKeyPlaintext = generateApiKey()
+    const apiKeyHash = hashApiKey(apiKeyPlaintext)
+    await ApiKey.create({
+      userId: user._id,
+      key: apiKeyHash,
+      name: "Default API Key",
+    })
+
     const token = await signAuthToken({ userId: String(user._id), email: user.email })
-    return NextResponse.json({ ok: true, token }, { status: 201 })
+    return NextResponse.json({ ok: true, token, apiKey: apiKeyPlaintext }, { status: 201 })
   } catch (e: any) {
     const status = e?.status || 500
     return NextResponse.json(
