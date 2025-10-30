@@ -6,16 +6,17 @@ import { Submission } from "@/models/submission"
 import { makeHttpError, requireApiKey } from "@/lib/auth"
 import { parsePagination } from "@/lib/pagination"
 
-export async function GET(req: NextRequest, { params }: { params: { orgId: string; formId: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ orgId: string; formId: string }> }) {
   try {
     await connectMongo()
     const auth = await requireApiKey(req)
-    const org = await Org.findById(params.orgId)
+    const { orgId, formId } = await params
+    const org = await Org.findById(orgId)
     if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
     if (String(org.ownerUserId) !== auth.userId) {
       throw makeHttpError("FORBIDDEN", "Only owner can retrieve submissions", 403)
     }
-    const form = await Form.findOne({ orgId: org._id, formId: params.formId })
+    const form = await Form.findOne({ orgId: org._id, formId })
     if (!form) throw makeHttpError("NOT_FOUND", "Form not found", 404)
 
     const { searchParams } = new URL(req.url)

@@ -7,10 +7,11 @@ import { formCreateSchema } from "@/lib/validators"
 import { parsePagination } from "@/lib/pagination"
 import { v4 as uuidv4 } from "uuid"
 
-export async function GET(req: NextRequest, { params }: { params: { orgId: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   try {
     await connectMongo()
-    const org = await Org.findById(params.orgId)
+    const { orgId } = await params
+    const org = await Org.findById(orgId)
     if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
 
     const { searchParams } = new URL(req.url)
@@ -31,11 +32,12 @@ export async function GET(req: NextRequest, { params }: { params: { orgId: strin
   }
 }
 
-export async function POST(req: NextRequest, { params }: { params: { orgId: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   try {
     await connectMongo()
     const auth = await requireApiKey(req)
-    const org = await Org.findById(params.orgId)
+    const { orgId } = await params
+    const org = await Org.findById(orgId)
     if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
     if (String(org.ownerUserId) !== auth.userId) {
       throw makeHttpError("FORBIDDEN", "Only owner can create forms", 403)

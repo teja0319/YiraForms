@@ -5,12 +5,13 @@ import { Form } from "@/models/form"
 import { formUpdateSchema } from "@/lib/validators"
 import { makeHttpError, requireApiKey } from "@/lib/auth"
 
-export async function GET(_: NextRequest, { params }: { params: { orgId: string; formId: string } }) {
+export async function GET(_: NextRequest, { params }: { params: Promise<{ orgId: string; formId: string }> }) {
   try {
     await connectMongo()
-    // const org = await Org.findById(params.orgId)
+    const { formId } = await params
+    // const org = await Org.findById(orgId)
     // if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
-    const form = await Form.findOne({ formId: params.formId })
+    const form = await Form.findOne({ formId })
     if (!form) throw makeHttpError("NOT_FOUND", "Form not found", 404)
     return NextResponse.json({ ok: true, form }, { status: 200 })
   } catch (e: any) {
@@ -22,16 +23,17 @@ export async function GET(_: NextRequest, { params }: { params: { orgId: string;
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { orgId: string; formId: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ orgId: string; formId: string }> }) {
   try {
     await connectMongo()
     const auth = await requireApiKey(req)
-    const org = await Org.findById(params.orgId)
+    const { orgId, formId } = await params
+    const org = await Org.findById(orgId)
     if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
     if (String(org.ownerUserId) !== auth.userId) {
       throw makeHttpError("FORBIDDEN", "Only owner can update forms", 403)
     }
-    const form = await Form.findOne({ orgId: org._id, formId: params.formId })
+    const form = await Form.findOne({ orgId: org._id, formId })
     if (!form) throw makeHttpError("NOT_FOUND", "Form not found", 404)
 
     const body = await req.json()
@@ -63,16 +65,17 @@ export async function PUT(req: NextRequest, { params }: { params: { orgId: strin
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { orgId: string; formId: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ orgId: string; formId: string }> }) {
   try {
     await connectMongo()
     const auth = await requireApiKey(req)
-    const org = await Org.findById(params.orgId)
+    const { orgId, formId } = await params
+    const org = await Org.findById(orgId)
     if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
     if (String(org.ownerUserId) !== auth.userId) {
       throw makeHttpError("FORBIDDEN", "Only owner can delete forms", 403)
     }
-    const form = await Form.findOne({ orgId: org._id, formId: params.formId })
+    const form = await Form.findOne({ orgId: org._id, formId })
     if (!form) throw makeHttpError("NOT_FOUND", "Form not found", 404)
     await form.deleteOne()
     return NextResponse.json({ ok: true }, { status: 200 })

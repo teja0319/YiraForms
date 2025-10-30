@@ -4,10 +4,11 @@ import { Org } from "@/models/org"
 import { makeHttpError, requireApiKey } from "@/lib/auth"
 import { orgUpdateSchema } from "@/lib/validators"
 
-export async function GET(_: NextRequest, { params }: { params: { orgId: string } }) {
+export async function GET(_: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   try {
     await connectMongo()
-    const org = await Org.findById(params.orgId)
+    const { orgId } = await params
+    const org = await Org.findById(orgId)
     if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
     return NextResponse.json({ ok: true, org }, { status: 200 })
   } catch (e: any) {
@@ -19,11 +20,12 @@ export async function GET(_: NextRequest, { params }: { params: { orgId: string 
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { orgId: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   try {
     await connectMongo()
     const auth = await requireApiKey(req)
-    const org = await Org.findById(params.orgId)
+    const { orgId } = await params
+    const org = await Org.findById(orgId)
     if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
     if (String(org.ownerUserId) !== auth.userId) {
       throw makeHttpError("FORBIDDEN", "Only owner can update org", 403)
@@ -45,11 +47,12 @@ export async function PUT(req: NextRequest, { params }: { params: { orgId: strin
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { orgId: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   try {
     await connectMongo()
     const auth = await requireApiKey(req)
-    const org = await Org.findById(params.orgId)
+    const { orgId } = await params
+    const org = await Org.findById(orgId)
     if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
     if (String(org.ownerUserId) !== auth.userId) {
       throw makeHttpError("FORBIDDEN", "Only owner can delete org", 403)

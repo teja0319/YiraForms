@@ -7,20 +7,21 @@ import { makeHttpError, requireApiKey } from "@/lib/auth"
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { orgId: string; formId: string; submissionId: string } },
+  { params }: { params: Promise<{ orgId: string; formId: string; submissionId: string }> },
 ) {
   try {
     await connectMongo()
     const auth = await requireApiKey(req)
-    const org = await Org.findById(params.orgId)
+    const { orgId, formId, submissionId } = await params
+    const org = await Org.findById(orgId)
     if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
     if (String(org.ownerUserId) !== auth.userId) {
       throw makeHttpError("FORBIDDEN", "Only owner can retrieve submissions", 403)
     }
-    const form = await Form.findOne({ orgId: org._id, formId: params.formId })
+    const form = await Form.findOne({ orgId: org._id, formId })
     if (!form) throw makeHttpError("NOT_FOUND", "Form not found", 404)
 
-    const item = await Submission.findOne({ _id: params.submissionId, formId: form.formId })
+    const item = await Submission.findOne({ _id: submissionId, formId: form.formId })
     if (!item) throw makeHttpError("NOT_FOUND", "Submission not found", 404)
     return NextResponse.json({ ok: true, submission: item }, { status: 200 })
   } catch (e: any) {

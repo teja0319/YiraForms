@@ -4,17 +4,16 @@ import { Form } from "@/models/form"
 import { Org } from "@/models/org"
 import { Submission } from "@/models/submission"
 import { submissionSchema } from "@/lib/validators"
-import { makeHttpError, requireAuth } from "@/lib/auth"
+import { makeHttpError } from "@/lib/auth"
 import { checkRateLimit, clientKey } from "@/lib/rate-limit"
 
 function ipFrom(req: NextRequest) {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.ip || null
 }
 
-export async function POST(req: NextRequest, { params }: { params: { formId: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ formId: string }> }) {
   try {
     await connectMongo()
-    debugger
     // best-effort rate limiter
     const ip = ipFrom(req)
     const rl = checkRateLimit(clientKey(ip, req.nextUrl.pathname), 30, 60_000)
@@ -28,7 +27,8 @@ export async function POST(req: NextRequest, { params }: { params: { formId: str
       throw makeHttpError("VALIDATION_ERROR", "Invalid input", 400, parsed.error.flatten())
     }
 
-    const form = await Form.findOne({ _id: params.formId })
+    const { formId } = await params
+    const form = await Form.findOne({ _id: formId })
     if (!form) throw makeHttpError("NOT_FOUND", "Form not found", 404)
 
     const org = await Org.findById(form.orgId)
