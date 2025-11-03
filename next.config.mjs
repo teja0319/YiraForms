@@ -10,6 +10,9 @@ const nextConfig = {
     unoptimized: true,
   },
   productionBrowserSourceMaps: false,
+  experimental: {
+    optimizePackageImports: ["@radix-ui"],
+  },
 }
 
 export default nextConfig
