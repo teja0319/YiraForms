@@ -1,11 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { connectMongo } from "@/lib/mongo"
 import { User } from "@/models/user"
-import { ApiKey } from "@/models/api-key"
 import { registerSchema } from "@/lib/validators"
 import { hash } from "bcryptjs"
 import { signAuthToken, makeHttpError } from "@/lib/auth"
-import { generateApiKey, hashApiKey } from "@/lib/api-key"
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,24 +13,23 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       throw makeHttpError("VALIDATION_ERROR", "Invalid input", 400, parsed.error.flatten())
     }
-    const { email, password } = parsed.data
+    const { email, password, orgId } = parsed.data
 
     const existing = await User.findOne({ email })
     if (existing) throw makeHttpError("VALIDATION_ERROR", "Email already registered", 400)
 
     const passwordHash = await hash(password, 10)
-    const user = await User.create({ email, passwordHash })
+    const user = await User.create({ email, passwordHash, ...(orgId ? { orgId } : {}) })
 
-    const apiKeyPlaintext = generateApiKey()
-    const apiKeyHash = hashApiKey(apiKeyPlaintext)
-    await ApiKey.create({
-      userId: user._id,
-      key: apiKeyHash,
-      name: "Default API Key",
+    const token = await signAuthToken({
+      userId: String(user._id),
+      email: user.email,
+      orgId: user.orgId ? String(user.orgId) : undefined,
     })
-
-    const token = await signAuthToken({ userId: String(user._id), email: user.email })
-    return NextResponse.json({ ok: true, token, apiKey: apiKeyPlaintext }, { status: 201 })
+    return NextResponse.json(
+      { ok: true, token, user: { _id: String(user._id), email: user.email, orgId: user.orgId } },
+      { status: 201 },
+    )
   } catch (e: any) {
     const status = e?.status || 500
     return NextResponse.json(

@@ -10,46 +10,27 @@ import { apiFetch } from "@/lib/client-fetch"
 type Field = {
   id: string
   label: string
-  name: string
-  type: "text" | "textarea" | "number" | "date" | "select" | "checkbox" | "radio" | "file"
+  type: "text" | "email" | "number" | "select"
   required?: boolean
-  options?: string[]
-  validations?: {
-    minLength?: number
-    maxLength?: number
-    pattern?: string
-    min?: number
-    max?: number
-  }
+  options?: string[] // for select
 }
 
 export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCreated?: (form: any) => void }) {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [fields, setFields] = useState<Field[]>([])
-  const [formId, setFormId] = useState("")
+  const [primaryKeyFieldId, setPrimaryKeyFieldId] = useState<string>("")
+  const [secondaryKeyFieldId, setSecondaryKeyFieldId] = useState<string>("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  function slugify(input: string) {
-    return input
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)+/g, "")
-  }
-
   const addField = () => {
-    const nextIndex = fields.length + 1
-    const defaultLabel = `Field ${nextIndex}`
     const newField: Field = {
       id: crypto.randomUUID(),
-      label: defaultLabel,
-      name: slugify(defaultLabel),
+      label: `Field ${fields.length + 1}`,
       type: "text",
       required: false,
       options: [],
-      validations: {},
     }
     setFields((f) => [...f, newField])
   }
@@ -66,33 +47,18 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
     setSaving(true)
     setError(null)
     try {
-      const payload = {
-        formId: formId,
+      const body = {
         title,
         description,
-        fields: fields.map((f, index) => ({
-          id: f.id,
-          label: f.label,
-          name: f.name,
-          type: f.type,
-          required: !!f.required,
-          options: (f.options || []).map((opt) => ({ value: slugify(opt), label: opt })),
-          validations: f.validations || {},
-          order: index,
-        })),
-        settings: {
-          acceptAnonymousSubmissions: false,
-          allowSecondaryKey: true,
-        },
+        fields,
+        primaryKeyFieldId: primaryKeyFieldId || null,
+        secondaryKeyFieldId: secondaryKeyFieldId || null,
       }
       const res = await apiFetch(`/api/orgs/${orgId}/forms`, {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
       })
-      if (!res.ok) {
-        const errTxt = await res.text().catch(() => "")
-        throw new Error(errTxt || "Failed to create form")
-      }
+      if (!res.ok) throw new Error("Failed to create form")
       const data = await res.json()
       onCreated?.(data)
     } catch (e: any) {
@@ -109,10 +75,6 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
           <CardTitle>Form details</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <label className="grid gap-2">
-            <span>Form ID</span>
-            <Input value={formId} onChange={(e) => setFormId(slugify(e.target.value))} placeholder="happiness-index" />
-          </label>
           <label className="grid gap-2">
             <span>Title</span>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Customer Feedback" />
@@ -140,59 +102,38 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
             <p className="text-sm text-muted-foreground">No fields yet. Add one to get started.</p>
           )}
           {fields.map((f, idx) => (
-            <div key={f.id} className="grid gap-3 border rounded-md p-4 bg-card">
-              <div className="grid md:grid-cols-4 gap-3">
+            <div key={f.id} className="grid gap-2 border rounded-md p-3">
+              <div className="grid md:grid-cols-3 gap-3">
                 <label className="grid gap-1">
-                  <span className="text-sm font-medium">Label</span>
-                  <Input
-                    value={f.label}
-                    onChange={(e) => {
-                      const label = e.target.value
-                      const prevSlug = slugify(f.label)
-                      const isAuto = f.name === prevSlug || f.name === ""
-                      updateField(idx, { label, name: isAuto ? slugify(label) : f.name })
-                    }}
-                  />
+                  <span>Label</span>
+                  <Input value={f.label} onChange={(e) => updateField(idx, { label: e.target.value })} />
                 </label>
                 <label className="grid gap-1">
-                  <span className="text-sm font-medium">Name</span>
-                  <Input
-                    value={f.name}
-                    onChange={(e) => updateField(idx, { name: slugify(e.target.value) })}
-                    placeholder="key-used-in-submissions"
-                  />
-                </label>
-                <label className="grid gap-1">
-                  <span className="text-sm font-medium">Type</span>
+                  <span>Type</span>
                   <select
-                    className="h-9 rounded-md border bg-background px-2 text-sm"
+                    className="h-9 rounded-md border bg-background px-2"
                     value={f.type}
                     onChange={(e) => updateField(idx, { type: e.target.value as Field["type"] })}
                   >
                     <option value="text">Text</option>
-                    <option value="textarea">Textarea</option>
+                    <option value="email">Email</option>
                     <option value="number">Number</option>
-                    <option value="date">Date</option>
                     <option value="select">Select</option>
-                    <option value="checkbox">Checkbox</option>
-                    <option value="radio">Radio</option>
-                    <option value="file">File</option>
                   </select>
                 </label>
-                <label className="flex items-center gap-2 pt-6">
+                <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
                     checked={!!f.required}
                     onChange={(e) => updateField(idx, { required: e.target.checked })}
-                    className="rounded"
                   />
-                  <span className="text-sm font-medium">Required</span>
+                  <span>Required</span>
                 </label>
               </div>
 
-              {(f.type === "select" || f.type === "radio") && (
+              {f.type === "select" && (
                 <div className="grid gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">Options (comma separated)</span>
+                  <span className="text-sm text-muted-foreground">Options (comma separated)</span>
                   <Input
                     value={(f.options || []).join(", ")}
                     onChange={(e) =>
@@ -208,110 +149,52 @@ export default function FormBuilder({ orgId, onCreated }: { orgId: string; onCre
                 </div>
               )}
 
-              <div className="border-t pt-3 mt-2">
-                <p className="text-sm font-medium mb-3">Validation Rules (optional)</p>
-                <div className="grid md:grid-cols-2 gap-3">
-                  {(f.type === "text" || f.type === "textarea" || f.type === "email") && (
-                    <>
-                      <label className="grid gap-1">
-                        <span className="text-xs text-muted-foreground">Min Length</span>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={f.validations?.minLength ?? ""}
-                          onChange={(e) =>
-                            updateField(idx, {
-                              validations: {
-                                ...f.validations,
-                                minLength: e.target.value ? Number(e.target.value) : undefined,
-                              },
-                            })
-                          }
-                          placeholder="e.g. 3"
-                        />
-                      </label>
-                      <label className="grid gap-1">
-                        <span className="text-xs text-muted-foreground">Max Length</span>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={f.validations?.maxLength ?? ""}
-                          onChange={(e) =>
-                            updateField(idx, {
-                              validations: {
-                                ...f.validations,
-                                maxLength: e.target.value ? Number(e.target.value) : undefined,
-                              },
-                            })
-                          }
-                          placeholder="e.g. 100"
-                        />
-                      </label>
-                      <label className="grid gap-1 md:col-span-2">
-                        <span className="text-xs text-muted-foreground">Pattern (regex)</span>
-                        <Input
-                          value={f.validations?.pattern ?? ""}
-                          onChange={(e) =>
-                            updateField(idx, {
-                              validations: {
-                                ...f.validations,
-                                pattern: e.target.value || undefined,
-                              },
-                            })
-                          }
-                          placeholder="e.g. ^[A-Z0-9]+$"
-                        />
-                      </label>
-                    </>
-                  )}
-
-                  {f.type === "number" && (
-                    <>
-                      <label className="grid gap-1">
-                        <span className="text-xs text-muted-foreground">Min Value</span>
-                        <Input
-                          type="number"
-                          value={f.validations?.min ?? ""}
-                          onChange={(e) =>
-                            updateField(idx, {
-                              validations: {
-                                ...f.validations,
-                                min: e.target.value ? Number(e.target.value) : undefined,
-                              },
-                            })
-                          }
-                          placeholder="e.g. 0"
-                        />
-                      </label>
-                      <label className="grid gap-1">
-                        <span className="text-xs text-muted-foreground">Max Value</span>
-                        <Input
-                          type="number"
-                          value={f.validations?.max ?? ""}
-                          onChange={(e) =>
-                            updateField(idx, {
-                              validations: {
-                                ...f.validations,
-                                max: e.target.value ? Number(e.target.value) : undefined,
-                              },
-                            })
-                          }
-                          placeholder="e.g. 100"
-                        />
-                      </label>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <Button variant="destructive" size="sm" onClick={() => removeField(idx)}>
+              <div className="flex items-center justify-between">
+                <Button variant="destructive" onClick={() => removeField(idx)}>
                   Remove
                 </Button>
                 <span className="text-xs text-muted-foreground">ID: {f.id}</span>
               </div>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Keys</CardTitle>
+        </CardHeader>
+        <CardContent className="grid md:grid-cols-2 gap-4">
+          <label className="grid gap-2">
+            <span>Primary Key Field</span>
+            <select
+              className="h-9 rounded-md border bg-background px-2"
+              value={primaryKeyFieldId}
+              onChange={(e) => setPrimaryKeyFieldId(e.target.value)}
+            >
+              <option value="">None</option>
+              {fields.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-2">
+            <span>Secondary Key Field (optional)</span>
+            <select
+              className="h-9 rounded-md border bg-background px-2"
+              value={secondaryKeyFieldId}
+              onChange={(e) => setSecondaryKeyFieldId(e.target.value)}
+            >
+              <option value="">None</option>
+              {fields.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </CardContent>
       </Card>
 

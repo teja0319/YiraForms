@@ -51,45 +51,6 @@ export async function requireAuth(req: NextRequest): Promise<AuthToken> {
   return auth
 }
 
-export async function verifyApiKey(apiKey: string): Promise<{ userId: string } | null> {
-  try {
-    const crypto = require("crypto")
-    const keyHash = crypto.createHash("sha256").update(apiKey).digest("hex")
-
-    const { ApiKey } = await import("@/models/api-key")
-    const foundKey = await ApiKey.findOne({ key: keyHash })
-
-    if (!foundKey) return null
-
-    // Update last used timestamp
-    await ApiKey.updateOne({ _id: foundKey._id }, { lastUsedAt: new Date() })
-
-    return { userId: String(foundKey.userId) }
-  } catch {
-    return null
-  }
-}
-
-export function getApiKeyFromHeader(req: NextRequest): string | null {
-  const h = req.headers.get("authorization")
-  if (!h) return null
-  const [type, key] = h.split(" ")
-  if (type?.toLowerCase() !== "bearer" || !key) return null
-  return key
-}
-
-export async function requireApiKey(req: NextRequest): Promise<{ userId: string }> {
-  const apiKey = getApiKeyFromHeader(req)
-  if (!apiKey) {
-    throw makeHttpError("UNAUTHORIZED", "Missing Authorization header", 401)
-  }
-  const auth = await verifyApiKey(apiKey)
-  if (!auth) {
-    throw makeHttpError("UNAUTHORIZED", "Invalid API key", 401)
-  }
-  return auth
-}
-
 export function makeHttpError(
   code: "VALIDATION_ERROR" | "NOT_FOUND" | "UNAUTHORIZED" | "FORBIDDEN" | "RATE_LIMITED" | "INTERNAL_ERROR",
   message: string,
