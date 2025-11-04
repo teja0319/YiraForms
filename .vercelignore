@@ -4,4 +4,3 @@ README.md
 node_modules
 .env.local
 .env.*.local
-.next/export-detail.json
