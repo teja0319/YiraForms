@@ -10,6 +10,8 @@ import { useAuth } from "@/hooks/use-auth"
 import { apiFetch } from "@/lib/client-fetch"
 import { useState } from "react"
 
+export const dynamic = "force-dynamic"
+
 const fetcher = (url: string) => apiFetch(url).then((r) => r.json())
 
 export default function OrgsPage() {
