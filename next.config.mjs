@@ -13,7 +13,6 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ["@radix-ui"],
   },
-    output: 'export', 
 }
 
 export default nextConfig
