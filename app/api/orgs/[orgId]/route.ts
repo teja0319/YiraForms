@@ -1,14 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { connectMongo } from "@/lib/mongo"
 import { Org } from "@/models/org"
-import { makeHttpError, requireApiKey } from "@/lib/auth"
+import { makeHttpError, requireAuth } from "@/lib/auth"
 import { orgUpdateSchema } from "@/lib/validators"
 
-export async function GET(_: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
+export async function GET(_: NextRequest, { params }: { params: { orgId: string } }) {
   try {
     await connectMongo()
-    const { orgId } = await params
-    const org = await Org.findById(orgId)
+    const org = await Org.findById(params.orgId)
     if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
     return NextResponse.json({ ok: true, org }, { status: 200 })
   } catch (e: any) {
@@ -20,12 +19,11 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ orgId:
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
+export async function PUT(req: NextRequest, { params }: { params: { orgId: string } }) {
   try {
     await connectMongo()
-    const auth = await requireApiKey(req)
-    const { orgId } = await params
-    const org = await Org.findById(orgId)
+    const auth = await requireAuth(req)
+    const org = await Org.findById(params.orgId)
     if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
     if (String(org.ownerUserId) !== auth.userId) {
       throw makeHttpError("FORBIDDEN", "Only owner can update org", 403)
@@ -47,12 +45,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ orgI
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: { orgId: string } }) {
   try {
     await connectMongo()
-    const auth = await requireApiKey(req)
-    const { orgId } = await params
-    const org = await Org.findById(orgId)
+    const auth = await requireAuth(req)
+    const org = await Org.findById(params.orgId)
     if (!org) throw makeHttpError("NOT_FOUND", "Org not found", 404)
     if (String(org.ownerUserId) !== auth.userId) {
       throw makeHttpError("FORBIDDEN", "Only owner can delete org", 403)
