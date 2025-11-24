@@ -181,12 +181,18 @@ export default function FormRenderer({
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/5 py-6 sm:py-8">
       <div className="container max-w-md sm:max-w-lg mx-auto px-4 sm:px-6">
-        <Card className="w-full shadow-xl border-0">
+              <Card className="w-full shadow-xl border-0">
+                  <img
+                      src="https://yiraappdev.blob.core.windows.net/adminuploadedfiles/yiraai.svg"
+                      alt="Yira Logo"
+                      className="h-12 sm:h-16 object-contain"
+                  />
           <CardHeader className="pb-4 sm:pb-6">
             <CardTitle className="text-2xl sm:text-3xl font-bold text-foreground">{form.title}</CardTitle>
             {form.description && (
               <CardDescription className="text-base sm:text-lg mt-2">{form.description}</CardDescription>
-            )}
+                      )}
+
           </CardHeader>
           <CardContent className="pt-2 sm:pt-4">
             <form onSubmit={onSubmit} className="grid gap-6 sm:gap-8">
