@@ -48,7 +48,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
       throw makeHttpError("VALIDATION_ERROR", "Invalid input", 400, parsed.error.flatten())
     }
     // Ensure field ids exist
-    const fields = (parsed.data.fields || []).map((f) => ({ ...f, id: f.id || uuidv4() }))
+      const fields = (parsed.data.fields || []).map((f) => ({
+          ...f,
+          id: uuidv4()
+      }));
     const doc = await Form.create({
       orgId: org._id,
       formId: parsed.data.formId,

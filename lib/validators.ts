@@ -16,7 +16,7 @@ export const orgCreateSchema = z.object({
 export const orgUpdateSchema = orgCreateSchema.partial()
 
 const baseFieldSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().nullable().optional(),
   label: z.string().min(1),
   name: z.string().min(1),
   type: z.enum(["text", "textarea", "number", "date", "select", "checkbox", "radio", "file"]),
