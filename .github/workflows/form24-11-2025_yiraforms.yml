@@ -29,7 +29,7 @@ jobs:
           cp -r .next deploy/.next
           cp -r public deploy/public
           cp package.json deploy/package.json
-          cp next.config.js deploy/next.config.js
+          cp next.config.mjs deploy/next.config.mjs
           npm ci --omit=dev --legacy-peer-deps
           cp -r node_modules deploy/node_modules
 
@@ -55,3 +55,4 @@ jobs:
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_C9662B2176C14CF09D8B013A8E171F85 }}
           package: .
+
