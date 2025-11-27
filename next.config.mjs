@@ -9,6 +9,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-}
 
-export default nextConfig
+  // 🔥 REQUIRED FOR AZURE APP SERVICE
+  output: "standalone",
+};
+
+export default nextConfig;
