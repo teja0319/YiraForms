@@ -9,9 +9,11 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-
+  reactStrictMode: true,
+  distDir: 'build',
   // 🔥 REQUIRED FOR AZURE APP SERVICE
   output: "standalone",
 };
 
 export default nextConfig;
+
