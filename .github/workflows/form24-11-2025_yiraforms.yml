@@ -35,6 +35,7 @@ jobs:
         with:
           app-name: YiraForms
           slot-name: "Production"
-          publish-profile: ${{ env.APPLICATION_PUBLISH_PROFILE }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_C9662B2176C14CF09D8B013A8E171F85 }}
           package: ./build/standalone
+
 
