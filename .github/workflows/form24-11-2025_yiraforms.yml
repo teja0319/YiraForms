@@ -24,7 +24,7 @@ jobs:
 
       - name: npm install, build, and test
         run: |
-          npm install
+          npm install --legacy-peer-deps
           npm run build
           mv ./build/static ./build/standalone/build
           mv ./public ./build/standalone
@@ -35,5 +35,7 @@ jobs:
         with:
           app-name: YiraForms
           slot-name: "Production"
-          publish-profile: ${{ env.APPLICATION_PUBLISH_PROFILE }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_C9662B2176C14CF09D8B013A8E171F85 }}
           package: ./build/standalone
+
+
