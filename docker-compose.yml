@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  yiraforms:
+    build: .
+    container_name: yiraforms-container
+    ports:
+      - "3008:3008"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
